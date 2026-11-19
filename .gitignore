@@ -1,0 +1,14 @@
+*
+!headers/
+!sources/
+!headers/**
+!sources/**
+!*.cpp
+!*.hpp
+!*.pdf
+!*.bat
+!*.sh
+
+!README.md
+!CMakeLists.txt
+!.gitignore
