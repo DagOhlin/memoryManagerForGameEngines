@@ -2,6 +2,7 @@
 
 #include "allocator.hpp"
 #include "common.hpp"
+#include <random>
 
 enum class AllocatorType
 {
@@ -22,5 +23,5 @@ public:
 private:
 
     void FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType);
-
+    void FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
 };

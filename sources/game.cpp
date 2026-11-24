@@ -51,3 +51,54 @@ void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocato
     std::cout << "alloc per frame: "   << allocTotalMs / numberOfFrames   << " ms\n";
     std::cout << "release per frame: " << freeTotalMs / numberOfFrames << " ms\n";
 }
+
+void Game::FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType){
+
+    double allocTotalMs = 0.0;
+    double freeTotalMs = 0.0;
+
+    const int maxAllocations = 20000;
+    const int minAllocations = 1000;
+    const int numberOfFrames = 1000;
+    const unsigned int minSize = 8;
+    const unsigned int maxSize = 256;
+    void* addressArray[maxAllocations];
+    unsigned int sizes[maxAllocations];
+
+    std::mt19937 rng(1337);
+    std::uniform_int_distribution<int> countDist(minAllocations, maxAllocations);
+    std::uniform_int_distribution<unsigned int> sizeDist(minSize, maxSize);
+
+    ScopeTimer t("FrameAllocatorTestlevel2");
+
+    for (size_t frame = 0; frame < numberOfFrames; frame++)
+    {
+        const int numberOfAllocations = countDist(rng);
+        for (int i = 0; i < numberOfAllocations; i++)
+            sizes[i] = sizeDist(rng);
+
+        double ms = 0.0;
+        {
+            ScopeTimer t1(ms);
+            for (int i = 0; i < numberOfAllocations; i++)
+                addressArray[i] = allocator.Allocate(sizes[i]);
+        }
+        allocTotalMs += ms;
+        {
+            ScopeTimer t2(ms);
+            if (allocatorType == AllocatorType::Stack)
+            {
+                allocator.Clear();
+            }
+            else{
+                for (int i = 0; i < numberOfAllocations; i++)
+                {
+                    allocator.Free(addressArray[i]);
+                }
+            }
+        }
+        freeTotalMs += ms;
+    }
+    std::cout << "alloc per frame: "   << allocTotalMs / numberOfFrames   << " ms\n";
+    std::cout << "release per frame: " << freeTotalMs / numberOfFrames << " ms\n";
+}
