@@ -6,7 +6,7 @@ BuddyBlock::BuddyBlock()
 
 BuddyBlock::BuddyBlock(void *base, unsigned int size)
 {
-    this->base = base;
+    this->base = (char*)base;
     this->size = size;
 }
 
@@ -22,7 +22,7 @@ void BuddyAllocator::Initialize(unsigned int size)
     }
 
     this->base = malloc(this->size);
-    this->freeBuddyBlocks[0].push_back(BuddyBlock(this->base, this->size));
+    this->freeBuddyBlocks.back().push_back(BuddyBlock(this->base, this->size));
 }
 
 void *BuddyAllocator::Allocate(unsigned int size)
@@ -51,18 +51,23 @@ void *BuddyAllocator::Allocate(unsigned int size)
     {
         currentBlock.size /= 2;
 
-        this->freeBuddyBlocks[currentStackIndex - 1].push_back(BuddyBlock(currentBlock.base + currentBlock.size, currentBlock.size));
+        this->freeBuddyBlocks[currentStackIndex - 1].push_back(
+            BuddyBlock(currentBlock.base + currentBlock.size, currentBlock.size));
         this->freeBuddyBlocks[currentStackIndex].pop_back();
 
         currentStackIndex -= 1;
     }
 
-    return currentBlock.base;
+    return (void*)currentBlock.base;
 }
 
 void BuddyAllocator::Free(void *pointer)
 {
 
+}
+
+void BuddyAllocator::Clear()
+{
 }
 
 uint64_t BuddyAllocator::NextPow2(unsigned int number)

@@ -7,7 +7,7 @@ struct BuddyBlock
     BuddyBlock();
     BuddyBlock(void* base, unsigned int size);
 
-    void* base = nullptr;
+    char* base = nullptr;
     unsigned int size = 0;
 };
 
