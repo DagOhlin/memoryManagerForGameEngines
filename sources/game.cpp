@@ -15,6 +15,9 @@ void Game::Run()
 
 void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType){
 
+    double allocTotalMs = 0.0;
+    double freeTotalMs = 0.0;
+
     const int numberOfAllocations = 10000;
     const int numberOfFrames = 1000;
     void* addressArray[numberOfAllocations];
@@ -23,24 +26,28 @@ void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocato
 
     for (size_t i = 0; i < numberOfFrames; i++)
     {
-        for (size_t i = 0; i < numberOfAllocations; i++)
+        double ms = 0.0;
         {
-            addressArray[i] = allocator.Allocate(8);
-        }
-        
-        if (allocatorType == AllocatorType::Stack)
-        {
-            allocator.Clear();
-        }
-        else{
+            ScopeTimer t(ms);
             for (size_t i = 0; i < numberOfAllocations; i++)
+                addressArray[i] = allocator.Allocate(8);
+        }
+        allocTotalMs += ms;
+        {
+            ScopeTimer t2(ms);
+            if (allocatorType == AllocatorType::Stack)
             {
-                allocator.Free(addressArray[i]);
+                allocator.Clear();
+            }
+            else{
+                for (size_t i = 0; i < numberOfAllocations; i++)
+                {
+                    allocator.Free(addressArray[i]);
+                }
             }
         }
+        freeTotalMs += ms;
     }
-    
-    
-    
-    
+    std::cout << "alloc per frame: "   << allocTotalMs / numberOfFrames   << " ms\n";
+    std::cout << "release per frame: " << freeTotalMs / numberOfFrames << " ms\n";
 }
