@@ -7,7 +7,9 @@ void PoolAllocator::Initialize(unsigned int size)
 {
     this->Clear();
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.lock();
+#endif
 
     // Make sure the size variable is valid
     assert(size % PoolAllocator::defaultChunkSize == 0);
@@ -21,19 +23,25 @@ void PoolAllocator::Initialize(unsigned int size)
 
     this->SetupLinkedList();
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.unlock();
+#endif
 }
 
 void PoolAllocator::Initialize(unsigned int chunkSize, unsigned int chunkCount)
 {
     this->Clear();
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.lock();
+#endif
 
     if (chunkSize < sizeof(FreeChunk))
     {
         std::cerr << "ERROR: chunkSize must be larger than " << std::to_string(sizeof(FreeChunk)) << " bytes" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
         this->poolAllocatorLock.unlock();
+#endif
         return;
     }
 
@@ -44,66 +52,88 @@ void PoolAllocator::Initialize(unsigned int chunkSize, unsigned int chunkCount)
 
     this->SetupLinkedList();
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.unlock();
+#endif
 }
 
 void *PoolAllocator::Allocate(unsigned int size)
 {
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.lock();
+#endif
 
     if (size > this->chunkSize)
     {
         std::cerr << "ERROR: Attempting to allocate larger than pool size" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
         this->poolAllocatorLock.unlock();
+#endif
         return nullptr;
     }
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.unlock();
+#endif
 
     return this->Allocate();
 }
 
 void *PoolAllocator::Allocate()
 {
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.lock();
+#endif
 
     if (this->memory == nullptr)
     {
         std::cerr << "ERROR: Allocating in uninitialized pool" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
         this->poolAllocatorLock.unlock();
+#endif
         return nullptr;
     }
 
     if (this->nextFreeChunk == nullptr)
     {
         std::cout << "Pool Allocator is full" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
         this->poolAllocatorLock.unlock();
+#endif
         return nullptr;
     }
 
     FreeChunk *temp = this->nextFreeChunk;
     this->nextFreeChunk = this->nextFreeChunk->next;
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.unlock();
+#endif
 
     return temp;
 }
 
 void PoolAllocator::Free(void *pointer)
 {
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.lock();
+#endif
 
     if (this->memory == nullptr)
     {
         std::cerr << "ERROR: Freeing in uninitialized pool" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
         this->poolAllocatorLock.unlock();
+#endif
         return;
     }
 
     if (pointer == nullptr)
     {
         std::cerr << "ERROR: Trying to free nullptr" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
         this->poolAllocatorLock.unlock();
+#endif
         return;
     }
 
@@ -113,12 +143,16 @@ void PoolAllocator::Free(void *pointer)
     freed->next = this->nextFreeChunk;
     this->nextFreeChunk = freed;
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.unlock();
+#endif
 }
 
 void PoolAllocator::Clear()
 {
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.lock();
+#endif
 
     if (this->memory != nullptr)
     {
@@ -131,7 +165,9 @@ void PoolAllocator::Clear()
     this->chunkSize = 0;
     this->chunkCount = 0;
 
+#ifdef MULTITHREAD_SUPPORT
     this->poolAllocatorLock.unlock();
+#endif
 }
 
 void PoolAllocator::SetupLinkedList()
