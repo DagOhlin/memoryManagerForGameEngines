@@ -29,7 +29,7 @@ void *BuddyAllocator::Allocate(unsigned int size)
 {
     if(size <= 0) return nullptr;
 
-    unsigned int actualSize = NextPow2(size);
+    unsigned int actualSize = NextPow2(size + 4);
     unsigned int targetStackIndex = 64 - (__builtin_clzl(actualSize) + 1);
     unsigned int currentStackIndex = targetStackIndex;
 
@@ -46,6 +46,7 @@ void *BuddyAllocator::Allocate(unsigned int size)
     }
     
     BuddyBlock currentBlock = this->freeBuddyBlocks[currentStackIndex].back();
+    this->freeBuddyBlocks[currentStackIndex].pop_back();
 
     while(currentStackIndex > targetStackIndex)
     {
@@ -53,17 +54,52 @@ void *BuddyAllocator::Allocate(unsigned int size)
 
         this->freeBuddyBlocks[currentStackIndex - 1].push_back(
             BuddyBlock(currentBlock.base + currentBlock.size, currentBlock.size));
-        this->freeBuddyBlocks[currentStackIndex].pop_back();
 
         currentStackIndex -= 1;
     }
 
-    return (void*)currentBlock.base;
+    //Store the block size, a 32-bit integer, just infront of the memory to be able to deallocate later
+    uint32_t sizePayload = currentBlock.size;
+    uint32_t* memoryPosition = (uint32_t*)currentBlock.base;
+    *memoryPosition = sizePayload;
+
+    return (void*)(currentBlock.base + 4);
 }
 
 void BuddyAllocator::Free(void *pointer)
 {
+    //the real base position is 32 bits in front of the pointer
+    uint32_t* memoryPosition = (uint32_t*)pointer - 1;
+    uint32_t blockSize = *memoryPosition;
+    BuddyBlock freeBlock(memoryPosition, blockSize);
 
+    void* buddyMemoryPosition = (void*)((uint32_t)memoryPosition ^ blockSize);
+    unsigned int targetStackIndex = 64 - (__builtin_clzl((uint64_t)blockSize) + 1);
+
+    int i = 0;
+    bool foundBlock = false;
+    //Loop through the target stack to look if buddy is free, merge if true
+    while(!foundBlock && i < this->freeBuddyBlocks[targetStackIndex].size())
+    {
+        //The buddy was free
+        if(buddyMemoryPosition == (uint32_t*)freeBuddyBlocks[targetStackIndex][i].base)
+        {
+            foundBlock = true;
+            freeBuddyBlocks[targetStackIndex].erase(freeBuddyBlocks[targetStackIndex].begin() + i);
+            freeBlock.size *= 2;
+
+            //If merging with the buddy size gets 2x bigger => targetStackIndex gets increased
+            targetStackIndex++;
+            
+            //The buddy was the left block, now freeBlock adress should instead be buddyMemoryPosition
+            if((uint32_t*)buddyMemoryPosition < memoryPosition)
+            {
+                freeBlock.base = (char*)buddyMemoryPosition;
+            }
+        }
+
+        i++;
+    }
 }
 
 void BuddyAllocator::Clear()
