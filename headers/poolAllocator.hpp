@@ -30,4 +30,6 @@ private:
     unsigned int chunkCount = 0;
 
     const static unsigned int defaultChunkSize = 64;
+
+    std::mutex poolAllocatorLock;
 };

@@ -7,6 +7,8 @@ void PoolAllocator::Initialize(unsigned int size)
 {
     this->Clear();
 
+    this->poolAllocatorLock.lock();
+
     // Make sure the size variable is valid
     assert(size % PoolAllocator::defaultChunkSize == 0);
 
@@ -18,15 +20,20 @@ void PoolAllocator::Initialize(unsigned int size)
     this->memory = new char[this->chunkCount * this->chunkSize];
 
     this->SetupLinkedList();
+
+    this->poolAllocatorLock.unlock();
 }
 
 void PoolAllocator::Initialize(unsigned int chunkSize, unsigned int chunkCount)
 {
     this->Clear();
 
+    this->poolAllocatorLock.lock();
+
     if (chunkSize < sizeof(FreeChunk))
     {
         std::cerr << "ERROR: chunkSize must be larger than " << std::to_string(sizeof(FreeChunk)) << " bytes" << std::endl;
+        this->poolAllocatorLock.unlock();
         return;
     }
 
@@ -36,49 +43,67 @@ void PoolAllocator::Initialize(unsigned int chunkSize, unsigned int chunkCount)
     this->memory = new char[this->chunkCount * this->chunkSize];
 
     this->SetupLinkedList();
+
+    this->poolAllocatorLock.unlock();
 }
 
 void *PoolAllocator::Allocate(unsigned int size)
 {
+    this->poolAllocatorLock.lock();
+
     if (size > this->chunkSize)
     {
         std::cerr << "ERROR: Attempting to allocate larger than pool size" << std::endl;
+        this->poolAllocatorLock.unlock();
         return nullptr;
     }
+
+    this->poolAllocatorLock.unlock();
 
     return this->Allocate();
 }
 
 void *PoolAllocator::Allocate()
 {
+    this->poolAllocatorLock.lock();
+
     if (this->memory == nullptr)
     {
         std::cerr << "ERROR: Allocating in uninitialized pool" << std::endl;
+        this->poolAllocatorLock.unlock();
         return nullptr;
     }
 
     if (this->nextFreeChunk == nullptr)
     {
         std::cout << "Pool Allocator is full" << std::endl;
+        this->poolAllocatorLock.unlock();
         return nullptr;
     }
 
     FreeChunk *temp = this->nextFreeChunk;
     this->nextFreeChunk = this->nextFreeChunk->next;
+
+    this->poolAllocatorLock.unlock();
+
     return temp;
 }
 
 void PoolAllocator::Free(void *pointer)
 {
+    this->poolAllocatorLock.lock();
+
     if (this->memory == nullptr)
     {
         std::cerr << "ERROR: Freeing in uninitialized pool" << std::endl;
+        this->poolAllocatorLock.unlock();
         return;
     }
 
     if (pointer == nullptr)
     {
         std::cerr << "ERROR: Trying to free nullptr" << std::endl;
+        this->poolAllocatorLock.unlock();
         return;
     }
 
@@ -87,10 +112,14 @@ void PoolAllocator::Free(void *pointer)
     FreeChunk *freed = (FreeChunk *)pointer;
     freed->next = this->nextFreeChunk;
     this->nextFreeChunk = freed;
+
+    this->poolAllocatorLock.unlock();
 }
 
 void PoolAllocator::Clear()
 {
+    this->poolAllocatorLock.lock();
+
     if (this->memory != nullptr)
     {
         delete[] this->memory;
@@ -101,6 +130,8 @@ void PoolAllocator::Clear()
 
     this->chunkSize = 0;
     this->chunkCount = 0;
+
+    this->poolAllocatorLock.unlock();
 }
 
 void PoolAllocator::SetupLinkedList()
