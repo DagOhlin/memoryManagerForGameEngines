@@ -12,10 +12,10 @@ void Game::Run()
     PoolAllocator poolAloc;
     poolAloc.Initialize(16, 15000);
     defalloc.Initialize(0);
-    this->FrameAllocatorTestlevel1(defalloc, AllocatorType::Default);
+    this->FrameAllocatorTestlevel1(poolAloc, AllocatorType::Default);
     PoolAllocator poolAloc2;
     poolAloc2.Initialize(256, 30000);
-    this->FrameAllocatorTestlevel2(defalloc, AllocatorType::Default);
+    this->FrameAllocatorTestlevel2(poolAloc2, AllocatorType::Default);
 }
 
 
@@ -108,4 +108,43 @@ void Game::FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocato
     }
     std::cout << "alloc per frame: "   << allocTotalMs / numberOfFrames   << " ms\n";
     std::cout << "release per frame: " << freeTotalMs / numberOfFrames << " ms\n";
+}
+
+void Game::PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType){
+
+    double allocTotalMs = 0.0;
+    double freeTotalMs = 0.0;
+
+    const int numberOfAllocations = 10000;
+    const int numberOfRounds = 1000;
+    const int allocationSize = 32;
+    void* addressArray[numberOfAllocations];
+    int freeOrder[numberOfAllocations];
+
+    for (int i = 0; i < numberOfAllocations; i++)
+        freeOrder[i] = i;
+
+    std::mt19937 rng(1337);
+    std::shuffle(freeOrder, freeOrder + numberOfAllocations, rng);
+
+    ScopeTimer t("PoolAllocatorTestlevel1");
+
+    for (int round = 0; round < numberOfRounds; round++)
+    {
+        double ms = 0.0;
+        {
+            ScopeTimer t1(ms);
+            for (int i = 0; i < numberOfAllocations; i++)
+                addressArray[i] = allocator.Allocate(allocationSize);
+        }
+        allocTotalMs += ms;
+        {
+            ScopeTimer t2(ms);
+            for (int i = 0; i < numberOfAllocations; i++)
+                allocator.Free(addressArray[freeOrder[i]]);
+        }
+        freeTotalMs += ms;
+    }
+    std::cout << "alloc per round: " << allocTotalMs / numberOfRounds << " ms\n";
+    std::cout << "free per round: "  << freeTotalMs / numberOfRounds  << " ms\n";
 }
