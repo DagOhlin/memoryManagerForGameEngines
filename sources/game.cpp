@@ -7,15 +7,32 @@
 void Game::Run()
 {
     // TODO: Tests
+    /*
     ScopeTimer t("Run timer");
     DefaultAllocator defalloc;
     PoolAllocator poolAloc;
     poolAloc.Initialize(16, 15000);
     defalloc.Initialize(0);
-    this->FrameAllocatorTestlevel1(poolAloc, AllocatorType::Default);
+    this->FrameAllocatorTestlevel1(poolAloc, AllocatorType::Pool);
     PoolAllocator poolAloc2;
     poolAloc2.Initialize(256, 30000);
-    this->FrameAllocatorTestlevel2(poolAloc2, AllocatorType::Default);
+    this->FrameAllocatorTestlevel2(poolAloc2, AllocatorType::Pool);
+    */
+   PoolAllocator poolForL1;
+    poolForL1.Initialize(32, 10000);
+    PoolAllocatorTestlevel1(poolForL1, AllocatorType::Pool);
+
+    DefaultAllocator def;
+    PoolAllocatorTestlevel1(def, AllocatorType::Default);
+
+    
+
+    PoolAllocator poolForL2;
+    poolForL2.Initialize(32, 10000);
+    PoolAllocatorTestlevel2(poolForL2, AllocatorType::Pool);
+
+    PoolAllocatorTestlevel2(def, AllocatorType::Default);
+
 }
 
 
@@ -28,7 +45,7 @@ void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocato
     const int numberOfFrames = 1000;
     const int allocationSize = 8;
     void* addressArray[numberOfAllocations];
-    ScopeTimer t("FrameAllocatorTestlevel1");
+    ScopeTimer t(std::string("FrameAllocatorTestlevel1 ") + AllocatorName(allocatorType));
 
 
     for (size_t i = 0; i < numberOfFrames; i++)
@@ -55,8 +72,8 @@ void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocato
         }
         freeTotalMs += ms;
     }
-    std::cout << "alloc per frame: "   << allocTotalMs / numberOfFrames   << " ms\n";
-    std::cout << "release per frame: " << freeTotalMs / numberOfFrames << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " alloc per frame: "   << allocTotalMs / numberOfFrames << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " release per frame: " << freeTotalMs / numberOfFrames  << " ms\n";
 }
 
 void Game::FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType){
@@ -76,7 +93,7 @@ void Game::FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocato
     std::uniform_int_distribution<int> countDist(minAllocations, maxAllocations);
     std::uniform_int_distribution<unsigned int> sizeDist(minSize, maxSize);
 
-    ScopeTimer t("FrameAllocatorTestlevel2");
+    ScopeTimer t(std::string("FrameAllocatorTestlevel2 ") + AllocatorName(allocatorType));
 
     for (size_t frame = 0; frame < numberOfFrames; frame++)
     {
@@ -106,8 +123,8 @@ void Game::FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocato
         }
         freeTotalMs += ms;
     }
-    std::cout << "alloc per frame: "   << allocTotalMs / numberOfFrames   << " ms\n";
-    std::cout << "release per frame: " << freeTotalMs / numberOfFrames << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " alloc per frame: "   << allocTotalMs / numberOfFrames << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " release per frame: " << freeTotalMs / numberOfFrames  << " ms\n";
 }
 
 void Game::PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType){
@@ -127,7 +144,7 @@ void Game::PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocator
     std::mt19937 rng(1337);
     std::shuffle(freeOrder, freeOrder + numberOfAllocations, rng);
 
-    ScopeTimer t("PoolAllocatorTestlevel1");
+    ScopeTimer t(std::string("PoolAllocatorTestlevel1 ") + AllocatorName(allocatorType));
 
     for (int round = 0; round < numberOfRounds; round++)
     {
@@ -145,6 +162,54 @@ void Game::PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocator
         }
         freeTotalMs += ms;
     }
-    std::cout << "alloc per round: " << allocTotalMs / numberOfRounds << " ms\n";
-    std::cout << "free per round: "  << freeTotalMs / numberOfRounds  << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " alloc per round: " << allocTotalMs / numberOfRounds << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " free per round: "  << freeTotalMs / numberOfRounds  << " ms\n";
+}
+
+void Game::PoolAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType){
+
+    double allocTotalMs = 0.0;
+    double freeTotalMs = 0.0;
+
+    const int numberOfObjects = 10000;
+    const int replacedPerFrame = 1000;
+    const int numberOfFrames = 1000;
+    const int allocationSize = 32;
+    void* addressArray[numberOfObjects];
+    int indices[numberOfObjects];
+
+    for (int i = 0; i < numberOfObjects; i++)
+        indices[i] = i;
+
+    std::mt19937 rng(1337);
+
+    for (int i = 0; i < numberOfObjects; i++)
+        addressArray[i] = allocator.Allocate(allocationSize);
+
+    ScopeTimer t(std::string("PoolAllocatorTestlevel2 ") + AllocatorName(allocatorType));
+
+    for (int frame = 0; frame < numberOfFrames; frame++)
+    {
+        std::shuffle(indices, indices + numberOfObjects, rng);
+
+        double ms = 0.0;
+        {
+            ScopeTimer t1(ms);
+            for (int i = 0; i < replacedPerFrame; i++)
+                allocator.Free(addressArray[indices[i]]);
+        }
+        freeTotalMs += ms;
+        {
+            ScopeTimer t2(ms);
+            for (int i = 0; i < replacedPerFrame; i++)
+                addressArray[indices[i]] = allocator.Allocate(allocationSize);
+        }
+        allocTotalMs += ms;
+    }
+
+    for (int i = 0; i < numberOfObjects; i++)
+        allocator.Free(addressArray[i]);
+
+    std::cout << AllocatorName(allocatorType) << " alloc per frame: " << allocTotalMs / numberOfFrames << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " free per frame: "  << freeTotalMs / numberOfFrames  << " ms\n";
 }

@@ -27,6 +27,8 @@ private:
     void FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
 
     void PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType);
+    void PoolAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
+
 
 };
 
