@@ -1,6 +1,7 @@
 #include "game.hpp"
 
 #include "defaultAllocator.hpp"
+#include "poolAllocator.hpp"
 #include "timer.hpp"
 
 void Game::Run()
@@ -8,8 +9,13 @@ void Game::Run()
     // TODO: Tests
     ScopeTimer t("Run timer");
     DefaultAllocator defalloc;
+    PoolAllocator poolAloc;
+    poolAloc.Initialize(16, 15000);
     defalloc.Initialize(0);
     this->FrameAllocatorTestlevel1(defalloc, AllocatorType::Default);
+    PoolAllocator poolAloc2;
+    poolAloc2.Initialize(256, 30000);
+    this->FrameAllocatorTestlevel2(defalloc, AllocatorType::Default);
 }
 
 
@@ -20,6 +26,7 @@ void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocato
 
     const int numberOfAllocations = 10000;
     const int numberOfFrames = 1000;
+    const int allocationSize = 8;
     void* addressArray[numberOfAllocations];
     ScopeTimer t("FrameAllocatorTestlevel1");
 
@@ -30,7 +37,7 @@ void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocato
         {
             ScopeTimer t(ms);
             for (size_t i = 0; i < numberOfAllocations; i++)
-                addressArray[i] = allocator.Allocate(8);
+                addressArray[i] = allocator.Allocate(allocationSize);
         }
         allocTotalMs += ms;
         {
