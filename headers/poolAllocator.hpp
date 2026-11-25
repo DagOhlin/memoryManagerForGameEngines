@@ -8,24 +8,26 @@ public:
     PoolAllocator() = default;
     ~PoolAllocator() = default;
 
-    virtual void Initialize(unsigned int size); // Initializes allocator
-    virtual void *Allocate(unsigned int size);  // Allocates memory
-    virtual void Free(void *pointer);           // Frees memory
-    virtual void Clear();                       // Frees all associated data
-
-    // Forward declaration
-    union Chunk;
+    virtual void Initialize(unsigned int size) override;                      // Initializes allocator
+    virtual void Initialize(unsigned int chunkSize, unsigned int chunkCount); // Initializes the pool allocator
+    virtual void *Allocate(unsigned int size) override;                       // Allocates memory
+    virtual void *Allocate();                                                 // Returns a chunk of memory
+    virtual void Free(void *pointer) override;                                // Frees memory
+    virtual void Clear() override;                                            // Frees all associated data
 
 private:
-    Chunk *chunkArray = nullptr;
-    Chunk *nextFreeChunk = nullptr;
-    const static unsigned int blockSize = 64;
+    void SetupLinkedList();
 
-public:
-    // Contains the data
-    union Chunk
+    struct FreeChunk
     {
-        Chunk *next;
-        char data[blockSize];
+        FreeChunk *next;
     };
+
+    char *memory = nullptr;
+    FreeChunk *nextFreeChunk = nullptr;
+
+    unsigned int chunkSize = 0;
+    unsigned int chunkCount = 0;
+
+    const static unsigned int defaultChunkSize = 64;
 };

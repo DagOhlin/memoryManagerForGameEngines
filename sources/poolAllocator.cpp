@@ -1,45 +1,76 @@
 #include "poolAllocator.hpp"
 
 #include <cassert>
+#include <string>
 
 void PoolAllocator::Initialize(unsigned int size)
 {
+    this->Clear();
+
     // Make sure the size variable is valid
-    assert(size % PoolAllocator::blockSize == 0);
+    assert(size % PoolAllocator::defaultChunkSize == 0);
 
-    const unsigned int chunkCount = size / PoolAllocator::blockSize;
-    this->chunkArray = this->nextFreeChunk = new Chunk[chunkCount];
+    // Use default chunk size
+    const unsigned int chunkCount = size / PoolAllocator::defaultChunkSize;
+    this->chunkSize = PoolAllocator::defaultChunkSize;
+    this->chunkCount = chunkCount;
 
-    // Put together the linked list
-    for (unsigned int i = 0; i < chunkCount - 1; i++)
+    this->memory = new char[this->chunkCount * this->chunkSize];
+
+    this->SetupLinkedList();
+}
+
+void PoolAllocator::Initialize(unsigned int chunkSize, unsigned int chunkCount)
+{
+    this->Clear();
+
+    if (chunkSize < sizeof(FreeChunk))
     {
-        this->chunkArray[i].next = &this->chunkArray[i + 1];
+        std::cerr << "ERROR: chunkSize must be larger than " << std::to_string(sizeof(FreeChunk)) << " bytes" << std::endl;
+        return;
     }
-    this->chunkArray[chunkCount - 1].next = nullptr;
+
+    this->chunkSize = chunkSize;
+    this->chunkCount = chunkCount;
+
+    this->memory = new char[this->chunkCount * this->chunkSize];
+
+    this->SetupLinkedList();
 }
 
 void *PoolAllocator::Allocate(unsigned int size)
 {
-    if (this->chunkArray == nullptr || this->nextFreeChunk == nullptr)
+    if (size > this->chunkSize)
+    {
+        std::cerr << "ERROR: Attempting to allocate larger than pool size" << std::endl;
+        return nullptr;
+    }
+
+    return this->Allocate();
+}
+
+void *PoolAllocator::Allocate()
+{
+    if (this->memory == nullptr)
+    {
+        std::cerr << "ERROR: Allocating in uninitialized pool" << std::endl;
+        return nullptr;
+    }
+
+    if (this->nextFreeChunk == nullptr)
     {
         std::cout << "Pool Allocator is full" << std::endl;
         return nullptr;
     }
 
-    if (size > PoolAllocator::blockSize)
-    {
-        std::cout << "Attempting to allocate larger than pool size" << std::endl;
-        return nullptr;
-    }
-
-    Chunk *temp = this->nextFreeChunk;
+    FreeChunk *temp = this->nextFreeChunk;
     this->nextFreeChunk = this->nextFreeChunk->next;
     return temp;
 }
 
 void PoolAllocator::Free(void *pointer)
 {
-    if (this->chunkArray == nullptr)
+    if (this->memory == nullptr)
     {
         std::cerr << "ERROR: Freeing in uninitialized pool" << std::endl;
         return;
@@ -51,18 +82,37 @@ void PoolAllocator::Free(void *pointer)
         return;
     }
 
-    Chunk *freed = (Chunk *)pointer;
+    // This might change the order of allocations
+    // but it doesn't matter as long as we only ever return one block
+    FreeChunk *freed = (FreeChunk *)pointer;
     freed->next = this->nextFreeChunk;
     this->nextFreeChunk = freed;
 }
 
 void PoolAllocator::Clear()
 {
-    if (this->chunkArray != nullptr)
+    if (this->memory != nullptr)
     {
-        delete[] this->chunkArray;
+        delete[] this->memory;
     }
 
-    this->chunkArray = nullptr;
+    this->memory = nullptr;
     this->nextFreeChunk = nullptr;
+
+    this->chunkSize = 0;
+    this->chunkCount = 0;
+}
+
+void PoolAllocator::SetupLinkedList()
+{
+    // Since using unsigned ints, having this->chunkCount = 0 means this->chunkCount - 1 will be very large
+    assert(chunkCount > 0);
+
+    // Put together the linked list
+    for (unsigned int i = 0; i < this->chunkCount - 1; i++)
+    {
+        ((FreeChunk *)&this->memory[i * this->chunkSize])->next = (FreeChunk *)&this->memory[(i + 1) * this->chunkSize];
+    }
+    ((FreeChunk *)&this->memory[(this->chunkCount - 1) * this->chunkSize])->next = nullptr;
+    this->nextFreeChunk = (FreeChunk *)this->memory;
 }
