@@ -2,6 +2,8 @@
 
 #include "allocator.hpp"
 
+// #define MULTITHREAD_SUPPORT
+
 class PoolAllocator : public Allocator
 {
 public:
@@ -31,5 +33,7 @@ private:
 
     const static unsigned int defaultChunkSize = 64;
 
+#ifdef MULTITHREAD_SUPPORT
     std::mutex poolAllocatorLock;
+#endif
 };
