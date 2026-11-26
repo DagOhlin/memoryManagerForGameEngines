@@ -3,6 +3,7 @@
 #include "defaultAllocator.hpp"
 #include "poolAllocator.hpp"
 #include "timer.hpp"
+#include "buddyAllocator.hpp"
 
 void Game::Run()
 {
@@ -32,6 +33,15 @@ void Game::Run()
     PoolAllocatorTestlevel2(poolForL2, AllocatorType::Pool);
 
     PoolAllocatorTestlevel2(def, AllocatorType::Default);
+
+
+
+    BuddyAllocator buddy;
+    buddy.Initialize(32 * 1024 * 1024);
+    BuddyAllocatorTestlevel2(buddy, AllocatorType::Buddy);
+
+    
+    BuddyAllocatorTestlevel2(def, AllocatorType::Default);
 
 }
 
@@ -212,4 +222,66 @@ void Game::PoolAllocatorTestlevel2(Allocator& allocator, AllocatorType allocator
 
     std::cout << AllocatorName(allocatorType) << " alloc per frame: " << allocTotalMs / numberOfFrames << " ms\n";
     std::cout << AllocatorName(allocatorType) << " free per frame: "  << freeTotalMs / numberOfFrames  << " ms\n";
+}
+
+void Game::BuddyAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType){
+
+    double allocTotalMs = 0.0;
+    double freeTotalMs = 0.0;
+
+    const int numberOfObjects = 10000;
+    const int replacedPerFrame = 1000;
+    const int numberOfFrames = 1000;
+    const unsigned int minSize = 16;
+    const unsigned int maxSize = 1024;
+    void* addressArray[numberOfObjects];
+    int indices[numberOfObjects];
+    unsigned int sizes[replacedPerFrame];
+    int failedAllocations = 0;
+
+    for (int i = 0; i < numberOfObjects; i++)
+        indices[i] = i;
+
+    std::mt19937 rng(1337);
+    std::uniform_int_distribution<unsigned int> sizeDist(minSize, maxSize);
+
+    for (int i = 0; i < numberOfObjects; i++)
+        addressArray[i] = allocator.Allocate(sizeDist(rng));
+
+    ScopeTimer t(std::string("BuddyAllocatorTestlevel2 ") + AllocatorName(allocatorType));
+
+    for (int frame = 0; frame < numberOfFrames; frame++)
+    {
+        std::shuffle(indices, indices + numberOfObjects, rng);
+        for (int i = 0; i < replacedPerFrame; i++)
+            sizes[i] = sizeDist(rng);
+
+        double ms = 0.0;
+        {
+            ScopeTimer t1(ms);
+            for (int i = 0; i < replacedPerFrame; i++)
+                if (addressArray[indices[i]] != nullptr)
+                    allocator.Free(addressArray[indices[i]]);
+        }
+        freeTotalMs += ms;
+        {
+            ScopeTimer t2(ms);
+            for (int i = 0; i < replacedPerFrame; i++)
+                addressArray[indices[i]] = allocator.Allocate(sizes[i]);
+        }
+        allocTotalMs += ms;
+
+        for (int i = 0; i < replacedPerFrame; i++)
+            if (addressArray[indices[i]] == nullptr)
+                failedAllocations++;
+    }
+
+    for (int i = 0; i < numberOfObjects; i++)
+        if (addressArray[i] != nullptr)
+            allocator.Free(addressArray[i]);
+
+    std::cout << AllocatorName(allocatorType) << " alloc per frame: " << allocTotalMs / numberOfFrames << " ms\n";
+    std::cout << AllocatorName(allocatorType) << " free per frame: "  << freeTotalMs / numberOfFrames  << " ms\n";
+    if (failedAllocations > 0)
+        std::cout << AllocatorName(allocatorType) << " failed allocations: " << failedAllocations << " (results not valid)\n";
 }
