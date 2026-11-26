@@ -306,4 +306,46 @@ void BuddyAllocatorTester::StressTest()
 
     buddy.PrintState();
     std::cout << "------Free-Done------" << std::endl;
+
+    integers.clear();
+
+        for (int i = 0; i < 512; i++)
+    {
+        uint32_t* integer = (uint32_t*)buddy.Allocate(32);
+        *integer = i;
+        integers.push_back(integer);
+    }
+
+    //This should fail because no memory left
+    std::cout << "should fail because no memory left" << std::endl;
+    integer = (uint32_t*)buddy.Allocate(32);
+    integers.push_back(integer);
+    
+    for (int i = 0; i < 512; i++)
+    {
+        std::cout << *integers[i] << std::endl;
+    }
+
+    if(integers[512] == nullptr)
+    {
+        std::cout << "Nice, stray integer didnt get allocated"<< std::endl;
+    }
+    else
+    {
+        std::cout << "Error! Somehow stray integer got allocated anyways"<< std::endl;
+    }
+
+    buddy.PrintState();
+    std::cout << "------Alloc2-Done------" << std::endl;
+
+    for (int i = 0; i < 512; i++)
+    {
+        buddy.Free(integers[i]);
+    }
+
+    buddy.PrintState();
+    std::cout << "------Free2-Done------" << std::endl;
+
+    buddy.Clear();
+    std::cout << "------Clear-Done------" << std::endl;
 }
