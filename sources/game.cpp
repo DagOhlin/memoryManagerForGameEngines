@@ -2,6 +2,7 @@
 
 #include "defaultAllocator.hpp"
 #include "poolAllocator.hpp"
+#include "stackAllocator.hpp"
 #include "timer.hpp"
 
 void Game::Run()
@@ -18,20 +19,32 @@ void Game::Run()
     poolAloc2.Initialize(256, 30000);
     this->FrameAllocatorTestlevel2(poolAloc2, AllocatorType::Pool);
     */
-   PoolAllocator poolForL1;
+    /*PoolAllocator poolForL1;
     poolForL1.Initialize(32, 10000);
     PoolAllocatorTestlevel1(poolForL1, AllocatorType::Pool);
 
     DefaultAllocator def;
     PoolAllocatorTestlevel1(def, AllocatorType::Default);
 
-    
-
     PoolAllocator poolForL2;
     poolForL2.Initialize(32, 10000);
     PoolAllocatorTestlevel2(poolForL2, AllocatorType::Pool);
 
-    PoolAllocatorTestlevel2(def, AllocatorType::Default);
+    PoolAllocatorTestlevel2(def, AllocatorType::Default);*/
+
+
+    /*DefaultAllocator def;
+    StackAllocator stackForL1;
+    stackForL1.Initialize(1024*1024);
+    FrameAllocatorTestlevel1(stackForL1, AllocatorType::Stack);
+    FrameAllocatorTestlevel1(def, AllocatorType::Default);
+
+    StackAllocator stackforL2;
+    stackforL2.Initialize(1024*1024*8);
+    FrameAllocatorTestlevel2(stackforL2, AllocatorType::Stack);
+    FrameAllocatorTestlevel2(def, AllocatorType::Default);*/
+
+
 
 }
 
