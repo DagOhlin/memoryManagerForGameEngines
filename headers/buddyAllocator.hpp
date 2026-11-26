@@ -33,6 +33,7 @@ private:
     unsigned int nrOfStacks = 0;
 
     std::vector<std::vector<BuddyBlock>> freeBuddyBlocks;
+    std::mutex buddyAllocatorLock;
 };
 
 class BuddyAllocatorTester

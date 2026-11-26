@@ -12,22 +12,40 @@ BuddyBlock::BuddyBlock(void *base, unsigned int size)
 
 void BuddyAllocator::Initialize(unsigned int size)
 {
+#ifdef MULTITHREAD_SUPPORT
+    this->poolAllocatorLock.lock();
+#endif
+
     this->size = NextPow2(size);
     this->nrOfStacks = 64 - __builtin_clzl(this->size);
 
     for (int i = 0; i < nrOfStacks; i++)
     {
-        std::vector<BuddyBlock> currentBlockSizeArray;
-        this->freeBuddyBlocks.push_back(currentBlockSizeArray);
+        this->freeBuddyBlocks.emplace_back().reserve(16);
     }
 
     this->base = malloc(this->size);
     this->freeBuddyBlocks.back().push_back(BuddyBlock(this->base, this->size));
+
+#ifdef MULTITHREAD_SUPPORT
+    this->poolAllocatorLock.unlock();
+#endif
 }
 
 void *BuddyAllocator::Allocate(unsigned int size)
 {
-    if(size <= 0) return nullptr;
+#ifdef MULTITHREAD_SUPPORT
+    this->poolAllocatorLock.lock();
+#endif
+    
+    if(size <= 0) 
+    {
+        #ifdef MULTITHREAD_SUPPORT
+            this->poolAllocatorLock.unlock();
+        #endif
+
+        return nullptr;
+    }
 
     unsigned int actualSize = NextPow2(size + 8);
     unsigned int targetStackIndex = 64 - (__builtin_clzl(actualSize) + 1);
@@ -42,6 +60,11 @@ void *BuddyAllocator::Allocate(unsigned int size)
     if(currentStackIndex >= this->nrOfStacks)
     {
         std::cout << "Out of memory exception!" << std::endl;
+
+        #ifdef MULTITHREAD_SUPPORT
+            this->poolAllocatorLock.unlock();
+        #endif
+
         return nullptr;
     }
     
@@ -63,11 +86,19 @@ void *BuddyAllocator::Allocate(unsigned int size)
     uint64_t* memoryPosition = (uint64_t*)currentBlock.base;
     *memoryPosition = sizePayload;
 
+    #ifdef MULTITHREAD_SUPPORT
+        this->poolAllocatorLock.unlock();
+    #endif
+
     return (void*)(currentBlock.base + 8);
 }
 
 void BuddyAllocator::Free(void *pointer)
 {
+#ifdef MULTITHREAD_SUPPORT
+    this->poolAllocatorLock.lock();
+#endif
+
     //Trying to dealloc outside of the buddy-pool
     // if((uint64_t)pointer < (uint64_t)this->base || (uint64_t)pointer >= (uint64_t)this->base + (uint64_t)this->size)
     // {
@@ -109,16 +140,28 @@ void BuddyAllocator::Free(void *pointer)
     }
 
     this->freeBuddyBlocks[targetStackIndex].push_back(freeBlock);
+
+    #ifdef MULTITHREAD_SUPPORT
+        this->poolAllocatorLock.unlock();
+    #endif
 }
 
 void BuddyAllocator::Clear()
 {
+#ifdef MULTITHREAD_SUPPORT
+    this->poolAllocatorLock.lock();
+#endif
+
     free(this->base);
 
     this->freeBuddyBlocks.clear();
     this->base = nullptr;
     this->size = 0;
     this->nrOfStacks = 0;
+
+#ifdef MULTITHREAD_SUPPORT
+    this->poolAllocatorLock.unlock();
+#endif
 }
 
 uint64_t BuddyAllocator::NextPow2(unsigned int number)
