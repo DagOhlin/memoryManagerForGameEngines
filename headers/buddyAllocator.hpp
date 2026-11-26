@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <cmath>
 #include "allocator.hpp"
 
 struct BuddyBlock
@@ -24,6 +25,7 @@ public:
     virtual void Clear();                       // Frees all associated data
     
     uint64_t NextPow2(unsigned int number);
+    void PrintState();
 
 private:
     void* base = nullptr;
@@ -31,4 +33,14 @@ private:
     unsigned int nrOfStacks = 0;
 
     std::vector<std::vector<BuddyBlock>> freeBuddyBlocks;
+};
+
+class BuddyAllocatorTester
+{
+public:
+    BuddyAllocatorTester() = default;
+    ~BuddyAllocatorTester() = default;
+
+    void SmallTest();
+    void StressTest();
 };
