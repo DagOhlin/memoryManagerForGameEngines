@@ -33,7 +33,7 @@ void Game::Run()
     PoolAllocatorTestlevel2(def, AllocatorType::Default);*/
 
 
-    DefaultAllocator def;
+    /*DefaultAllocator def;
     StackAllocator stackForL1;
     stackForL1.Initialize(1024*1024);
     FrameAllocatorTestlevel1(stackForL1, AllocatorType::Stack);
@@ -42,7 +42,7 @@ void Game::Run()
     StackAllocator stackforL2;
     stackforL2.Initialize(1024*1024*8);
     FrameAllocatorTestlevel2(stackforL2, AllocatorType::Stack);
-    FrameAllocatorTestlevel2(def, AllocatorType::Default);
+    FrameAllocatorTestlevel2(def, AllocatorType::Default);*/
 
 
 
