@@ -1,59 +1,139 @@
-// stack_allocator.cpp
+// stackAllocator.cpp
 #include "stackAllocator.hpp"
 
 #include <cassert>
-
-static std::uintptr_t AlignUp(std::uintptr_t value, std::size_t alignment)
-{
-    return (value + (alignment - 1)) & ~(static_cast<std::uintptr_t>(alignment) - 1);
-}
-
-StackAllocator::~StackAllocator()
-{
-    std::free(m_start);
-}
+#include <iostream>
 
 void StackAllocator::Initialize(unsigned int size)
 {
-    std::free(m_start); // safe if re-initializing (free(nullptr) is a no-op)
-    m_start = static_cast<unsigned char *>(std::malloc(size));
-    assert(m_start && "StackAllocator: backing allocation failed");
-    m_size = m_start ? size : 0;
-    m_offset = 0;
+    this->Clear();
+
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.lock();
+#endif
+
+    assert(size > 0);
+
+    this->memory = new char[size];
+    this->capacity = size;
+    this->offset = 0;
+
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.unlock();
+#endif
 }
 
 void *StackAllocator::Allocate(unsigned int size)
 {
-    if (!m_start){return nullptr;}
-    const std::uintptr_t current = reinterpret_cast<std::uintptr_t>(m_start) + m_offset;
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.lock();
+#endif
 
-    // Leave room for the header, then align the user pointer.
-    const std::uintptr_t userAddr = AlignUp(current + sizeof(Header), kAlignment);
-    const std::size_t newOffset = (userAddr - reinterpret_cast<std::uintptr_t>(m_start)) + size;
+    if (this->memory == nullptr)
+    {
+        std::cerr << "ERROR: Allocating in uninitialized stack" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
+        this->stackAllocatorLock.unlock();
+#endif
+        return nullptr;
+    }
 
-    if (newOffset > m_size) {return nullptr;} // out of memory
+    // Round the top up to alignment, new char[] is aligned for any type = aligned offset => aligned pointer.
+    const unsigned int alignedOffset = (this->offset + alignment - 1) & ~(alignment - 1);
 
-    Header *header = reinterpret_cast<Header *>(userAddr - sizeof(Header));
-    header->prevOffset = m_offset;
+    // No Overflow here
+    if (alignedOffset > this->capacity || size > this->capacity - alignedOffset)
+    {
+        std::cerr << "ERROR: Stack Allocator is full" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
+        this->stackAllocatorLock.unlock();
+#endif
+        return nullptr;
+    }
 
-    m_offset = newOffset;
-    return reinterpret_cast<void *>(userAddr);
+    void *result = this->memory + alignedOffset;
+    this->offset = alignedOffset + size;
+
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.unlock();
+#endif
+
+    return result;
 }
 
 void StackAllocator::Free(void *pointer)
 {
-    if (!pointer)
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.lock();
+#endif
+
+    if (this->memory == nullptr)
+    {
+        std::cerr << "ERROR: Freeing in uninitialized stack" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
+        this->stackAllocatorLock.unlock();
+#endif
         return;
+    }
 
-    auto *p = static_cast<unsigned char *>(pointer);
-    assert(p >= m_start + sizeof(Header) && p < m_start + m_offset &&
-           "StackAllocator: pointer not owned by this stack (or already freed)");
+    if (pointer == nullptr)
+    {
+        std::cerr << "ERROR: Trying to free nullptr" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
+        this->stackAllocatorLock.unlock();
+#endif
+        return;
+    }
 
-    const Header *header = reinterpret_cast<const Header *>(p - sizeof(Header));
-    m_offset = header->prevOffset;
+    char *p = static_cast<char *>(pointer);
+
+    // Must point at a block that is still live
+    if (p < this->memory || p >= this->memory + this->offset)
+    {
+        std::cerr << "ERROR: Pointer not owned by this stack (or already freed)" << std::endl;
+#ifdef MULTITHREAD_SUPPORT
+        this->stackAllocatorLock.unlock();
+#endif
+        return;
+    }
+
+    // Everything at and above this pointer is released
+    this->offset = static_cast<unsigned int>(p - this->memory);
+
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.unlock();
+#endif
 }
 
 void StackAllocator::Clear()
 {
-    m_offset = 0;
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.lock();
+#endif
+
+    if (this->memory != nullptr)
+    {
+        delete[] this->memory;
+    }
+
+    this->memory = nullptr;
+    this->capacity = 0;
+    this->offset = 0;
+
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.unlock();
+#endif
+}
+
+void StackAllocator::Reset()
+{
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.lock();
+#endif
+
+    this->offset = 0;
+
+#ifdef MULTITHREAD_SUPPORT
+    this->stackAllocatorLock.unlock();
+#endif
 }

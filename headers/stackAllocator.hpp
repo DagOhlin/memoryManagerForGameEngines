@@ -1,5 +1,12 @@
 #pragma once
+
 #include "allocator.hpp"
+
+// #define MULTITHREAD_SUPPORT
+
+#ifdef MULTITHREAD_SUPPORT
+#include <mutex>
+#endif
 
 class StackAllocator : public Allocator
 {
@@ -10,20 +17,20 @@ public:
     StackAllocator(const StackAllocator &) = delete;
     StackAllocator &operator=(const StackAllocator &) = delete;
 
-    void Initialize(unsigned int size) override; // Reserves le backing buffer
-    void *Allocate(unsigned int size) override; // Pushes a block; nullptr if out of space
-    void Free(void *pointer) override; // Pops this block
-    void Clear() override;                       // Resets the stack; keeps the buffer
+    virtual void Initialize(unsigned int size) override; // Initializes allocator
+    virtual void *Allocate(unsigned int size) override; // Pushes a block onto the stack
+    virtual void Free(void *pointer) override; // Pops this block & all above it
+    virtual void Clear() override; // Frees all associated data
+    virtual void Reset(); // Rewinds stack & keep memory
 
 private:
-    struct Header
-    {
-        std::size_t prevOffset; // top of stack before this allocation
-    };
+    char *memory = nullptr;
+    unsigned int capacity = 0;
+    unsigned int offset = 0; // current top of the stack
 
-    static constexpr std::size_t kAlignment = 16;
+    static constexpr unsigned int alignment = 16;
 
-    unsigned char *m_start = nullptr;
-    std::size_t m_size = 0;
-    std::size_t m_offset = 0; // current top of stack
+#ifdef MULTITHREAD_SUPPORT
+    std::mutex stackAllocatorLock;
+#endif
 };
