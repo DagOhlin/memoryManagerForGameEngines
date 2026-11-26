@@ -21,9 +21,9 @@ public:
     virtual void *Allocate(unsigned int size) override; // Pushes a block onto the stack
     virtual void Free(void *pointer) override; // Pops this block & all above it
     virtual void Clear() override; // Frees all associated data
-    virtual void Reset(); // Rewinds stack & keep memory
 
 private:
+    void Release();
     char *memory = nullptr;
     unsigned int capacity = 0;
     unsigned int offset = 0; // current top of the stack

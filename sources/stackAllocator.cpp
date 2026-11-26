@@ -6,7 +6,7 @@
 
 void StackAllocator::Initialize(unsigned int size)
 {
-    this->Clear();
+    this->Release(); // was Clear() that did not work
 
 #ifdef MULTITHREAD_SUPPORT
     this->stackAllocatorLock.lock();
@@ -111,13 +111,6 @@ void StackAllocator::Clear()
     this->stackAllocatorLock.lock();
 #endif
 
-    if (this->memory != nullptr)
-    {
-        delete[] this->memory;
-    }
-
-    this->memory = nullptr;
-    this->capacity = 0;
     this->offset = 0;
 
 #ifdef MULTITHREAD_SUPPORT
@@ -125,12 +118,15 @@ void StackAllocator::Clear()
 #endif
 }
 
-void StackAllocator::Reset()
+void StackAllocator::Release()
 {
 #ifdef MULTITHREAD_SUPPORT
     this->stackAllocatorLock.lock();
 #endif
 
+    delete[] this->memory;
+    this->memory = nullptr;
+    this->capacity = 0;
     this->offset = 0;
 
 #ifdef MULTITHREAD_SUPPORT
