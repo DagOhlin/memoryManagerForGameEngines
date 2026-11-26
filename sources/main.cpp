@@ -1,10 +1,11 @@
 #include <iostream>
 #include "game.hpp"
+#include "poolAllocator.hpp"
 
 int main(int argc, char *argv[])
 {
     std::cout << "Starting..." << std::endl;
-    
+
     Game game;
     game.Run();
 
