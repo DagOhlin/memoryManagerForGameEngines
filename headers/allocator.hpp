@@ -5,8 +5,7 @@
 Allocator Interface
 */
 
-#define MULTITHREAD_SUPPORT
-
+// #define MULTITHREAD_SUPPORT
 
 class Allocator
 {
