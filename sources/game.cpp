@@ -9,7 +9,7 @@
 void Game::Run()
 {
     // TODO: Tests
-    DefaultAllocator def;
+    //DefaultAllocator def;
 
     /*
     ScopeTimer t("Run timer");
@@ -58,11 +58,21 @@ void Game::Run()
     
     BuddyAllocatorTestlevel2(def, AllocatorType::Default);
     */
+    DefaultAllocator def;
+    def.Initialize(0);
+    ThreadAllocatorTest(def, AllocatorType::Default);
+
     PoolAllocator pool;
     pool.Initialize(32, 80000);
     ThreadAllocatorTest(pool, AllocatorType::Pool);
 
-    ThreadAllocatorTest(def, AllocatorType::Default);
+    BuddyAllocator buddy;
+    buddy.Initialize(8 * 1024 * 1024);
+    ThreadAllocatorTest(buddy, AllocatorType::Buddy);
+
+    StackAllocator stack;
+    stack.Initialize(8 * 1024 * 1024);
+    ThreadAllocatorTest(stack, AllocatorType::Stack);
 
 }
 
@@ -308,7 +318,7 @@ void Game::BuddyAllocatorTestlevel2(Allocator& allocator, AllocatorType allocato
 }
 
 static void ThreadWork(Allocator* allocator, std::vector<void*>* blocks, int threadId,
-                       int allocationsPerThread, unsigned int allocationSize)
+                       int allocationsPerThread, unsigned int allocationSize, bool freeAndReallocate)
 {
     const unsigned char pattern = (unsigned char)(threadId + 1);
 
@@ -322,14 +332,17 @@ static void ThreadWork(Allocator* allocator, std::vector<void*>* blocks, int thr
         blocks->push_back(block);
     }
 
-    for (size_t i = 0; i < blocks->size(); i += 2)
+    if (freeAndReallocate)
     {
-        allocator->Free((*blocks)[i]);
-        unsigned char* block = (unsigned char*)allocator->Allocate(allocationSize);
-        if (block != nullptr)
-            for (unsigned int b = 0; b < allocationSize; b++)
-                block[b] = pattern;
-        (*blocks)[i] = block;
+        for (size_t i = 0; i < blocks->size(); i += 2)
+        {
+            allocator->Free((*blocks)[i]);
+            unsigned char* block = (unsigned char*)allocator->Allocate(allocationSize);
+            if (block != nullptr)
+                for (unsigned int b = 0; b < allocationSize; b++)
+                    block[b] = pattern;
+            (*blocks)[i] = block;
+        }
     }
 }
 
@@ -343,13 +356,13 @@ void Game::ThreadAllocatorTest(Allocator& allocator, AllocatorType allocatorType
     std::vector<std::thread> threads;
 
     {
-        ScopeTimer t(std::string("ThreadAllocatorTest ") + AllocatorName(allocatorType));
+        //ScopeTimer t(std::string("ThreadAllocatorTest ") + AllocatorName(allocatorType));
 
         
         for (int threadId = 0; threadId < numberOfThreads; threadId++)
         {
             threads.emplace_back(ThreadWork, &allocator, &threadBlocks[threadId], threadId,
-                allocationsPerThread, allocationSize);
+                allocationsPerThread, allocationSize, allocatorType != AllocatorType::Stack);
         }
         
 
@@ -390,10 +403,17 @@ void Game::ThreadAllocatorTest(Allocator& allocator, AllocatorType allocatorType
         if (addresses[i - 1] + allocationSize > addresses[i])
             overlappingBlocks++;
 
-    for (int threadId = 0; threadId < numberOfThreads; threadId++)
-        for (void* pointer : threadBlocks[threadId])
-            if (pointer != nullptr)
-                allocator.Free(pointer);
+    if (allocatorType == AllocatorType::Stack)
+    {
+        allocator.Clear();
+    }
+    else
+    {
+        for (int threadId = 0; threadId < numberOfThreads; threadId++)
+            for (void* pointer : threadBlocks[threadId])
+                if (pointer != nullptr)
+                    allocator.Free(pointer);
+    }
 
     const bool passed = failedAllocations == 0 && corruptedBlocks == 0 && overlappingBlocks == 0;
     std::cout << AllocatorName(allocatorType) << " thread test: " << (passed ? "PASS" : "FAIL") << "\n";
