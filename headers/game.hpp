@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include <random>
 #include <algorithm>
+#include <cstdint>
 
 enum class AllocatorType
 {
@@ -31,6 +32,7 @@ private:
 
     void BuddyAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
 
+    void ThreadAllocatorTest(Allocator& allocator, AllocatorType allocatorType);
 
 
 };

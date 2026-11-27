@@ -9,6 +9,8 @@
 void Game::Run()
 {
     // TODO: Tests
+    DefaultAllocator def;
+
     /*
     ScopeTimer t("Run timer");
     DefaultAllocator defalloc;
@@ -31,7 +33,7 @@ void Game::Run()
     poolForL2.Initialize(32, 10000);
     PoolAllocatorTestlevel2(poolForL2, AllocatorType::Pool);
 
-    PoolAllocatorTestlevel2(def, AllocatorType::Default);*/
+    PoolAllocatorTestlevel2(def, AllocatorType::Default);
 
 
     DefaultAllocator def;
@@ -55,6 +57,12 @@ void Game::Run()
 
     
     BuddyAllocatorTestlevel2(def, AllocatorType::Default);
+    */
+    PoolAllocator pool;
+    pool.Initialize(32, 80000);
+    ThreadAllocatorTest(pool, AllocatorType::Pool);
+
+    ThreadAllocatorTest(def, AllocatorType::Default);
 
 }
 
@@ -297,4 +305,99 @@ void Game::BuddyAllocatorTestlevel2(Allocator& allocator, AllocatorType allocato
     std::cout << AllocatorName(allocatorType) << " free per frame: "  << freeTotalMs / numberOfFrames  << " ms\n";
     if (failedAllocations > 0)
         std::cout << AllocatorName(allocatorType) << " failed allocations: " << failedAllocations << " (results not valid)\n";
+}
+
+static void ThreadWork(Allocator* allocator, std::vector<void*>* blocks, int threadId,
+                       int allocationsPerThread, unsigned int allocationSize)
+{
+    const unsigned char pattern = (unsigned char)(threadId + 1);
+
+    for (int i = 0; i < allocationsPerThread; i++)
+    {
+        unsigned char* block = (unsigned char*)allocator->Allocate(allocationSize);
+        if (block == nullptr)
+            continue;
+        for (unsigned int b = 0; b < allocationSize; b++)
+            block[b] = pattern;
+        blocks->push_back(block);
+    }
+
+    for (size_t i = 0; i < blocks->size(); i += 2)
+    {
+        allocator->Free((*blocks)[i]);
+        unsigned char* block = (unsigned char*)allocator->Allocate(allocationSize);
+        if (block != nullptr)
+            for (unsigned int b = 0; b < allocationSize; b++)
+                block[b] = pattern;
+        (*blocks)[i] = block;
+    }
+}
+
+void Game::ThreadAllocatorTest(Allocator& allocator, AllocatorType allocatorType){
+
+    const int numberOfThreads = 8;
+    const int allocationsPerThread = 10000;
+    const unsigned int allocationSize = 32;
+
+    std::vector<std::vector<void*>> threadBlocks(numberOfThreads);
+    std::vector<std::thread> threads;
+
+    {
+        ScopeTimer t(std::string("ThreadAllocatorTest ") + AllocatorName(allocatorType));
+
+        
+        for (int threadId = 0; threadId < numberOfThreads; threadId++)
+        {
+            threads.emplace_back(ThreadWork, &allocator, &threadBlocks[threadId], threadId,
+                allocationsPerThread, allocationSize);
+        }
+        
+
+        for (std::thread& thread : threads)
+            thread.join();
+    }
+
+    int failedAllocations = 0;
+    int corruptedBlocks = 0;
+    int overlappingBlocks = 0;
+    std::vector<std::uintptr_t> addresses;
+
+    for (int threadId = 0; threadId < numberOfThreads; threadId++)
+    {
+        const unsigned char pattern = (unsigned char)(threadId + 1);
+        for (void* pointer : threadBlocks[threadId])
+        {
+            if (pointer == nullptr)
+            {
+                failedAllocations++;
+                continue;
+            }
+            unsigned char* block = (unsigned char*)pointer;
+            for (unsigned int b = 0; b < allocationSize; b++)
+            {
+                if (block[b] != pattern)
+                {
+                    corruptedBlocks++;
+                    break;
+                }
+            }
+            addresses.push_back((std::uintptr_t)pointer);
+        }
+    }
+
+    std::sort(addresses.begin(), addresses.end());
+    for (size_t i = 1; i < addresses.size(); i++)
+        if (addresses[i - 1] + allocationSize > addresses[i])
+            overlappingBlocks++;
+
+    for (int threadId = 0; threadId < numberOfThreads; threadId++)
+        for (void* pointer : threadBlocks[threadId])
+            if (pointer != nullptr)
+                allocator.Free(pointer);
+
+    const bool passed = failedAllocations == 0 && corruptedBlocks == 0 && overlappingBlocks == 0;
+    std::cout << AllocatorName(allocatorType) << " thread test: " << (passed ? "PASS" : "FAIL") << "\n";
+    std::cout << "  failed allocations: " << failedAllocations << "\n";
+    std::cout << "  corrupted blocks: "   << corruptedBlocks   << "\n";
+    std::cout << "  overlapping blocks: " << overlappingBlocks << "\n";
 }
