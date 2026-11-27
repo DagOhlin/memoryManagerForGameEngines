@@ -33,7 +33,7 @@ void Game::Run()
     poolForL2.Initialize(32, 10000);
     PoolAllocatorTestlevel2(poolForL2, AllocatorType::Pool);
 
-    PoolAllocatorTestlevel2(def, AllocatorType::Default);*/
+    PoolAllocatorTestlevel2(def, AllocatorType::Default);
 
 
     DefaultAllocator def;
