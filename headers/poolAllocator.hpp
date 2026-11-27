@@ -2,7 +2,6 @@
 
 #include "allocator.hpp"
 
-// #define MULTITHREAD_SUPPORT
 
 class PoolAllocator : public Allocator
 {

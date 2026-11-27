@@ -4,6 +4,10 @@
 /*
 Allocator Interface
 */
+
+#define MULTITHREAD_SUPPORT
+
+
 class Allocator
 {
 public:

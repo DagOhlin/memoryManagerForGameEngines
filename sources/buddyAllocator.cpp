@@ -13,7 +13,7 @@ BuddyBlock::BuddyBlock(void *base, unsigned int size)
 void BuddyAllocator::Initialize(unsigned int size)
 {
 #ifdef MULTITHREAD_SUPPORT
-    this->poolAllocatorLock.lock();
+    this->buddyAllocatorLock.lock();
 #endif
 
     this->size = NextPow2(size);
@@ -28,20 +28,20 @@ void BuddyAllocator::Initialize(unsigned int size)
     this->freeBuddyBlocks.back().push_back(BuddyBlock(this->base, this->size));
 
 #ifdef MULTITHREAD_SUPPORT
-    this->poolAllocatorLock.unlock();
+    this->buddyAllocatorLock.unlock();
 #endif
 }
 
 void *BuddyAllocator::Allocate(unsigned int size)
 {
 #ifdef MULTITHREAD_SUPPORT
-    this->poolAllocatorLock.lock();
+    this->buddyAllocatorLock.lock();
 #endif
     
     if(size <= 0) 
     {
         #ifdef MULTITHREAD_SUPPORT
-            this->poolAllocatorLock.unlock();
+            this->buddyAllocatorLock.unlock();
         #endif
 
         return nullptr;
@@ -62,7 +62,7 @@ void *BuddyAllocator::Allocate(unsigned int size)
         std::cout << "Out of memory exception!" << std::endl;
 
         #ifdef MULTITHREAD_SUPPORT
-            this->poolAllocatorLock.unlock();
+            this->buddyAllocatorLock.unlock();
         #endif
 
         return nullptr;
@@ -87,7 +87,7 @@ void *BuddyAllocator::Allocate(unsigned int size)
     *memoryPosition = sizePayload;
 
     #ifdef MULTITHREAD_SUPPORT
-        this->poolAllocatorLock.unlock();
+        this->buddyAllocatorLock.unlock();
     #endif
 
     return (void*)(currentBlock.base + 8);
@@ -96,7 +96,7 @@ void *BuddyAllocator::Allocate(unsigned int size)
 void BuddyAllocator::Free(void *pointer)
 {
 #ifdef MULTITHREAD_SUPPORT
-    this->poolAllocatorLock.lock();
+    this->buddyAllocatorLock.lock();
 #endif
 
     //Trying to dealloc outside of the buddy-pool
@@ -142,14 +142,14 @@ void BuddyAllocator::Free(void *pointer)
     this->freeBuddyBlocks[targetStackIndex].push_back(freeBlock);
 
     #ifdef MULTITHREAD_SUPPORT
-        this->poolAllocatorLock.unlock();
+        this->buddyAllocatorLock.unlock();
     #endif
 }
 
 void BuddyAllocator::Clear()
 {
 #ifdef MULTITHREAD_SUPPORT
-    this->poolAllocatorLock.lock();
+    this->buddyAllocatorLock.lock();
 #endif
 
     free(this->base);
@@ -160,7 +160,7 @@ void BuddyAllocator::Clear()
     this->nrOfStacks = 0;
 
 #ifdef MULTITHREAD_SUPPORT
-    this->poolAllocatorLock.unlock();
+    this->buddyAllocatorLock.unlock();
 #endif
 }
 
