@@ -9,7 +9,7 @@
 void Game::Run()
 {
     // TODO: Tests
-    //DefaultAllocator def;
+    DefaultAllocator def;
 
     /*
     ScopeTimer t("Run timer");
@@ -58,6 +58,8 @@ void Game::Run()
     
     BuddyAllocatorTestlevel2(def, AllocatorType::Default);
     */
+
+    /*
     DefaultAllocator def;
     def.Initialize(0);
     ThreadAllocatorTest(def, AllocatorType::Default);
@@ -73,18 +75,27 @@ void Game::Run()
     StackAllocator stack;
     stack.Initialize(8 * 1024 * 1024);
     ThreadAllocatorTest(stack, AllocatorType::Stack);
+    */
 
+    for (int count : {1000, 10000, 100000})
+    {
+        PoolAllocator pool;
+        pool.Initialize(32, count);
+        PoolAllocatorTestlevel1(pool, AllocatorType::Pool, count, 32);
+        PoolAllocatorTestlevel1(def, AllocatorType::Default, count, 32);
+    }
 }
 
 
-void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType){
+void Game::FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType,
+                              int numberOfAllocations, unsigned int allocationSize){
 
     double allocTotalMs = 0.0;
     double freeTotalMs = 0.0;
 
-    const int numberOfAllocations = 10000;
+    //const int numberOfAllocations = 10000;
     const int numberOfFrames = 1000;
-    const int allocationSize = 8;
+    //const int allocationSize = 8;
     void* addressArray[numberOfAllocations];
     ScopeTimer t(std::string("FrameAllocatorTestlevel1 ") + AllocatorName(allocatorType));
 
@@ -168,14 +179,15 @@ void Game::FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocato
     std::cout << AllocatorName(allocatorType) << " release per frame: " << freeTotalMs / numberOfFrames  << " ms\n";
 }
 
-void Game::PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType){
+void Game::PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType,
+                              int numberOfAllocations, unsigned int allocationSize){
 
     double allocTotalMs = 0.0;
     double freeTotalMs = 0.0;
 
-    const int numberOfAllocations = 10000;
+    //const int numberOfAllocations = 10000;
     const int numberOfRounds = 1000;
-    const int allocationSize = 32;
+    //const int allocationSize = 32;
     void* addressArray[numberOfAllocations];
     int freeOrder[numberOfAllocations];
 
