@@ -6,12 +6,11 @@
 struct BuddyBlock
 {
     BuddyBlock();
-    BuddyBlock(void* base, unsigned int size);
+    BuddyBlock(void *base, unsigned int size);
 
-    char* base = nullptr;
+    char *base = nullptr;
     unsigned int size = 0;
 };
-
 
 class BuddyAllocator : public Allocator
 {
@@ -23,12 +22,13 @@ public:
     virtual void *Allocate(unsigned int size);  // Allocates memory
     virtual void Free(void *pointer);           // Frees memory
     virtual void Clear();                       // Frees all associated data
-    
-    uint64_t NextPow2(unsigned int number);
+
+    uint64_t NextPow2(uint64_t number);
+    uint64_t GetStackIndex(uint64_t number);
     void PrintState();
 
 private:
-    void* base = nullptr;
+    void *base = nullptr;
     unsigned int size = 0;
     unsigned int nrOfStacks = 0;
 

@@ -77,6 +77,8 @@ void Game::Run()
     ThreadAllocatorTest(stack, AllocatorType::Stack);
     */
 
+    // Standard tests:
+
     for (int count : {1, 32, 100, 1000, 10000, 100000})
     {
         PoolAllocator pool;
@@ -115,6 +117,8 @@ void Game::Run()
         frame.Release();
     }
 
+    // Buddy test
+
     BuddyAllocator buddy;
     buddy.Initialize(32 * 1024 * 1024);
     BuddyAllocatorTestlevel2(buddy, AllocatorType::Buddy);
@@ -134,7 +138,8 @@ void Game::FrameAllocatorTestlevel1(Allocator &allocator, AllocatorType allocato
     // const int numberOfAllocations = 10000;
     const int numberOfFrames = 1000;
     // const int allocationSize = 8;
-    void *addressArray[numberOfAllocations];
+    std::unique_ptr<void *[]> addressArray(new void *[numberOfAllocations]);
+    // void *addressArray[numberOfAllocations];
     ScopeTimer t(std::string("FrameAllocatorTestlevel1 ") + AllocatorName(allocatorType));
 
     for (size_t i = 0; i < numberOfFrames; i++)
@@ -231,14 +236,16 @@ void Game::PoolAllocatorTestlevel1(Allocator &allocator, AllocatorType allocator
     // const int numberOfAllocations = 10000;
     const int numberOfRounds = 1000;
     // const int allocationSize = 32;
-    void *addressArray[numberOfAllocations];
-    int freeOrder[numberOfAllocations];
+    // void *addressArray[numberOfAllocations];
+    std::unique_ptr<void *[]> addressArray(new void *[numberOfAllocations]);
+    // int freeOrder[numberOfAllocations];
+    std::unique_ptr<int[]> freeOrder(new int[numberOfAllocations]);
 
     for (int i = 0; i < numberOfAllocations; i++)
         freeOrder[i] = i;
 
     std::mt19937 rng(1337);
-    std::shuffle(freeOrder, freeOrder + numberOfAllocations, rng);
+    std::shuffle(freeOrder.get(), freeOrder.get() + numberOfAllocations, rng);
 
     ScopeTimer t(std::string("PoolAllocatorTestlevel1 ") + AllocatorName(allocatorType));
 
