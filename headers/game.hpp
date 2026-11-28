@@ -24,10 +24,13 @@ public:
 
 private:
 
-    void FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType);
+    void FrameAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType,
+                              int numberOfAllocations, unsigned int allocationSize);
+    void PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType,
+                             int numberOfAllocations, unsigned int allocationSize);
+
     void FrameAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
 
-    void PoolAllocatorTestlevel1(Allocator& allocator, AllocatorType allocatorType);
     void PoolAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
 
     void BuddyAllocatorTestlevel2(Allocator& allocator, AllocatorType allocatorType);
